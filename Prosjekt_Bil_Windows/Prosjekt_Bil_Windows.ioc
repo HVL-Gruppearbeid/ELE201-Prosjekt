@@ -1,9 +1,14 @@
 #MicroXplorer Configuration settings - do not modify
 ADC3.Channel-0\#ChannelRegularConversion=ADC_CHANNEL_1
-ADC3.IPParameters=Rank-0\#ChannelRegularConversion,Channel-0\#ChannelRegularConversion,SamplingTime-0\#ChannelRegularConversion,NbrOfConversionFlag
+ADC3.Channel-1\#ChannelRegularConversion=ADC_CHANNEL_3
+ADC3.IPParameters=Rank-0\#ChannelRegularConversion,Channel-0\#ChannelRegularConversion,SamplingTime-0\#ChannelRegularConversion,NbrOfConversionFlag,ScanConvMode,Rank-1\#ChannelRegularConversion,Channel-1\#ChannelRegularConversion,SamplingTime-1\#ChannelRegularConversion,NbrOfConversion
+ADC3.NbrOfConversion=2
 ADC3.NbrOfConversionFlag=1
 ADC3.Rank-0\#ChannelRegularConversion=1
+ADC3.Rank-1\#ChannelRegularConversion=2
 ADC3.SamplingTime-0\#ChannelRegularConversion=ADC_SAMPLETIME_3CYCLES
+ADC3.SamplingTime-1\#ChannelRegularConversion=ADC_SAMPLETIME_3CYCLES
+ADC3.ScanConvMode=ADC_SCAN_ENABLE
 CAD.formats=
 CAD.pinconfig=
 CAD.provider=
