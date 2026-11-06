@@ -31,7 +31,8 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-
+  #define ADC_MAX_VALUE       4095   // 12|-bit ADC has a max value of 4095
+  #define PWM_PERIOD_VALUE    19999     // TIM1 ARR is set to 19999
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -45,7 +46,12 @@ ADC_HandleTypeDef hadc3;
 TIM_HandleTypeDef htim3;
 
 /* USER CODE BEGIN PV */
-
+  uint16_t adc_value_yakse = 0;
+  uint16_t adc_value_xakse = 0;
+  int32_t x = 0;
+  int32_t y = 0;
+  int32_t turn = 0;
+  uint32_t base_speed = 10000; // Base speed for the motors, can be adjusted as needed
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -94,16 +100,85 @@ int main(void)
   MX_ADC3_Init();
   MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
+  HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1); //Output til høyre
+  HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_3); //Output til venstre
 
+ 
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+    /* 
+      Tanken her er at potensiometer Joy-sticken gir to ulike ADC verdier, en for X-aksen og en for Y-aksen. Disse verdiene kan brukes til å styre PWM signalene som går til motorene.
+      Potensiometeret vil gi en verdi mellom 0 og 4095 (Hvis det er en 12 bit ADC):
+      Verdier over 2048 (I x-aksen) vil derfor gi en fremover bevegelse, og under vil gi en bakoverbevegelse.
+      For å få en smooth overgang mellom fremover og bakover, kan man bruke en "deadzone" rundt midtpunktet (2048). Dette betyr at hvis verdien er mellom 1900 og 2200, vil motorene ikke bevege seg
+      For å regne ut svinging ser man på y-akse ADC verdien. Hvis denne er over 2048, vil roboten svinge til høyre, og under 2048 vil den svinge til venstre. Igjen kan man bruke en deadzone for å unngå små bevegelser.
+
+      Dette vil regnes ut med å ha en relativ hastighet basert på y-aksen på hvert hjul. 
+      For simplisitetens skyld, har man en konstant hastighet ved fremover/bakover, og så justerer man hastigheten på hvert hjul basert på y-aksen. Dette kan gjøres med en enkel formel:
+      left_motor_speed = base_speed + (y_value - 2048) / 2048
+    
+    */
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+
+
+
+    HAL_ADC_Start(&hadc3); 
+    
+    HAL_ADC_PollForConversion(&hadc3, HAL_MAX_DELAY);
+    adc_value_yakse = HAL_ADC_GetValue(&hadc3);
+
+    HAL_ADC_PollForConversion(&hadc3, HAL_MAX_DELAY);
+    adc_value_xakse = HAL_ADC_GetValue(&hadc3);
+
+
+    //Setter Midt på joysticken som midtepunkt for PWM signalene
+    x = adc_value_xakse - 2048;
+    y = adc_value_yakse - 2048;
+    
+
+
+    turn = adc_value_yakse - 2048;
+
+
+  
+    //Fremover med svinging til høyre
+    if( x > 200 && y > 200){
+      __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, base_speed + turn); // Høyre hjul
+      __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_3, base_speed - turn); // Venstre hjul
+
+
+    } 
+    //fremover med svinging til venstre
+    else if (x > 200 && y < -200){
+      __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, base_speed - turn); // Høyre hjul
+      __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_3, base_speed + turn); // Venstre hjul
+    }
+    //Fremover uten svinging
+    else if (x > 200 && y <= 200 && y >= -200){
+      __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, base_speed ); // Høyre hjul
+      __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_3, base_speed ); // Venstre hjul
+    } 
+    /*
+    //Bakover
+    else if (x < -200){
+
+    }
+    
+  */else
+{
+    __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, 0);
+    __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_3, 0);
+}
+
+
+
+
   }
   /* USER CODE END 3 */
 }
@@ -185,13 +260,13 @@ static void MX_ADC3_Init(void)
   hadc3.Instance = ADC3;
   hadc3.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV4;
   hadc3.Init.Resolution = ADC_RESOLUTION_12B;
-  hadc3.Init.ScanConvMode = ADC_SCAN_DISABLE;
+  hadc3.Init.ScanConvMode = ADC_SCAN_ENABLE;
   hadc3.Init.ContinuousConvMode = DISABLE;
   hadc3.Init.DiscontinuousConvMode = DISABLE;
   hadc3.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
   hadc3.Init.ExternalTrigConv = ADC_SOFTWARE_START;
   hadc3.Init.DataAlign = ADC_DATAALIGN_RIGHT;
-  hadc3.Init.NbrOfConversion = 1;
+  hadc3.Init.NbrOfConversion = 2;
   hadc3.Init.DMAContinuousRequests = DISABLE;
   hadc3.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
   if (HAL_ADC_Init(&hadc3) != HAL_OK)
@@ -204,6 +279,15 @@ static void MX_ADC3_Init(void)
   sConfig.Channel = ADC_CHANNEL_1;
   sConfig.Rank = ADC_REGULAR_RANK_1;
   sConfig.SamplingTime = ADC_SAMPLETIME_3CYCLES;
+  if (HAL_ADC_ConfigChannel(&hadc3, &sConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /** Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time.
+  */
+  sConfig.Channel = ADC_CHANNEL_3;
+  sConfig.Rank = ADC_REGULAR_RANK_2;
   if (HAL_ADC_ConfigChannel(&hadc3, &sConfig) != HAL_OK)
   {
     Error_Handler();
