@@ -119,8 +119,8 @@ int main(void)
   MX_TIM1_Init();
   /* USER CODE BEGIN 2 */
 
-  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1); //Output til høyre
-  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_2); //Output til venstre
+  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1); //Output til venstre
+  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_2); //Output til høyre
 
   /* USER CODE END 2 */
 
