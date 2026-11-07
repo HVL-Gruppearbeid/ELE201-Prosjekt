@@ -59,14 +59,8 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
-#define ADC_Yakse_Pin GPIO_PIN_1
-#define ADC_Yakse_GPIO_Port GPIOA
 #define ACD_Xakse_Pin GPIO_PIN_3
 #define ACD_Xakse_GPIO_Port GPIOA
-#define OutputTilHoyre_Pin GPIO_PIN_6
-#define OutputTilHoyre_GPIO_Port GPIOA
-#define OutputTilVenstre_Pin GPIO_PIN_0
-#define OutputTilVenstre_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
 
