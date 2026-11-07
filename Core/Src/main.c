@@ -27,6 +27,12 @@
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
 
+typedef enum {
+ MOTOR_STATE_STOP = 0, // Explicitly set to 0
+ MOTOR_STATE_FORWARD,       // Defaults to 1
+ MOTOR_STATE_BACKWARD       // Defaults to 2
+  } MotorState_t;
+
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -56,7 +62,9 @@ UART_HandleTypeDef huart3;
   int32_t x = 0;
   int32_t y = 0;
   int32_t turn = 0;
-  uint32_t base_speed = 10000; // Base speed for the motors, can be adjusted as neede
+  uint32_t base_speed = 10000; // Base speed for the motors, can be adjusted as needed
+
+  MotorState_t current_motor_state = MOTOR_STATE_STOP; // Initial state
 
 /* USER CODE END PV */
 
@@ -109,8 +117,8 @@ int main(void)
   MX_TIM1_Init();
   /* USER CODE BEGIN 2 */
 
-  HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1); //Output til høyre
-  HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_3); //Output til venstre
+  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1); //Output til høyre
+  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_2); //Output til venstre
 
   /* USER CODE END 2 */
 
@@ -118,6 +126,20 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+
+
+   /* 
+      Tanken her er at potensiometer Joy-sticken gir to ulike ADC verdier, en for X-aksen og en for Y-aksen. Disse verdiene kan brukes til å styre PWM signalene som går til motorene.
+      Potensiometeret vil gi en verdi mellom 0 og 4095 (Hvis det er en 12 bit ADC):
+      Verdier over 2048 (I x-aksen) vil derfor gi en fremover bevegelse, og under vil gi en bakoverbevegelse.
+      For å få en smooth overgang mellom fremover og bakover, kan man bruke en "deadzone" rundt midtpunktet (2048). Dette betyr at hvis verdien er mellom 1900 og 2200, vil motorene ikke bevege seg
+      For å regne ut svinging ser man på y-akse ADC verdien. Hvis denne er over 2048, vil roboten svinge til høyre, og under 2048 vil den svinge til venstre. Igjen kan man bruke en deadzone for å unngå små bevegelser.
+
+      Dette vil regnes ut med å ha en relativ hastighet basert på y-aksen på hvert hjul. 
+      For simplisitetens skyld, har man en konstant hastighet ved fremover/bakover, og så justerer man hastigheten på hvert hjul basert på y-aksen. Dette kan gjøres med en enkel formel:
+      left_motor_speed = base_speed + (y_value - 2048) / 2048
+    
+    */
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -140,38 +162,81 @@ int main(void)
 
     turn = adc_value_yakse - 2048;
 
+    switch(current_motor_state){
 
+      //PF13 => venstre retning 1
+      //PF12 => venstre retning 2
+      //PF14 => høyre retning 1
+      //PF15 => høyre retning 2
+
+      //Retning 1 => fremover, Retning 2 => bakover
+
+      case MOTOR_STATE_STOP:
+        HAL_GPIO_WritePin(GPIOF, GPIO_PIN_13, GPIO_PIN_RESET);
+        HAL_GPIO_WritePin(GPIOF, GPIO_PIN_12, GPIO_PIN_RESET);
+        HAL_GPIO_WritePin(GPIOF, GPIO_PIN_14, GPIO_PIN_RESET);
+        HAL_GPIO_WritePin(GPIOF, GPIO_PIN_15, GPIO_PIN_RESET);
+
+        __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, 0);
+        __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_2, 0);
+        break;
+
+      case MOTOR_STATE_FORWARD:
+
+        //Fremover med svinging til høyre
+        if( x > 200 && y > 200){
+
+          HAL_GPIO_WritePin(GPIOF, GPIO_PIN_13, GPIO_PIN_SET);
+          HAL_GPIO_WritePin(GPIOF, GPIO_PIN_12, GPIO_PIN_RESET);
+          HAL_GPIO_WritePin(GPIOF, GPIO_PIN_14, GPIO_PIN_SET);
+          HAL_GPIO_WritePin(GPIOF, GPIO_PIN_15, GPIO_PIN_RESET);
+
+
+          __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, base_speed + turn); // Høyre hjul
+          __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_2, base_speed - turn); // Venstre hjul
+
+
+        } 
+
+        //fremover med svinging til venstre
+        else if (x > 200 && y < -200){
+          HAL_GPIO_WritePin(GPIOF, GPIO_PIN_13, GPIO_PIN_SET);
+          HAL_GPIO_WritePin(GPIOF, GPIO_PIN_12, GPIO_PIN_RESET);
+          HAL_GPIO_WritePin(GPIOF, GPIO_PIN_14, GPIO_PIN_SET);
+          HAL_GPIO_WritePin(GPIOF, GPIO_PIN_15, GPIO_PIN_RESET);
+
+          __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, base_speed - turn); // Høyre hjul
+          __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_2, base_speed + turn); // Venstre hjul
+        }
+
+        //Fremover uten svinging
+        else if (x > 200 && y <= 200 && y >= -200){
+          HAL_GPIO_WritePin(GPIOF, GPIO_PIN_13, GPIO_PIN_SET);
+          HAL_GPIO_WritePin(GPIOF, GPIO_PIN_12, GPIO_PIN_RESET);
+          HAL_GPIO_WritePin(GPIOF, GPIO_PIN_14, GPIO_PIN_SET);
+          HAL_GPIO_WritePin(GPIOF, GPIO_PIN_15, GPIO_PIN_RESET);
+
+          __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, base_speed ); // Høyre hjul
+          __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_2, base_speed ); // Venstre hjul
+        } 
+
+      break;
+
+
+      case MOTOR_STATE_BACKWARD:
+        HAL_GPIO_WritePin(GPIOF, GPIO_PIN_13, GPIO_PIN_RESET);
+        HAL_GPIO_WritePin(GPIOF, GPIO_PIN_12, GPIO_PIN_SET);
+        HAL_GPIO_WritePin(GPIOF, GPIO_PIN_14, GPIO_PIN_RESET);
+        HAL_GPIO_WritePin(GPIOF, GPIO_PIN_15, GPIO_PIN_SET);
+
+        __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, base_speed ); // Høyre hjul
+        __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_2, base_speed ); // Venstre hjul
+      break;
+
+
+    }
   
-    //Fremover med svinging til høyre
-    if( x > 200 && y > 200){
-      __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, base_speed + turn); // Høyre hjul
-      __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_3, base_speed - turn); // Venstre hjul
-
-
-    } 
-    //fremover med svinging til venstre
-    else if (x > 200 && y < -200){
-      __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, base_speed - turn); // Høyre hjul
-      __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_3, base_speed + turn); // Venstre hjul
-    }
-    //Fremover uten svinging
-    else if (x > 200 && y <= 200 && y >= -200){
-      __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, base_speed ); // Høyre hjul
-      __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_3, base_speed ); // Venstre hjul
-    } 
-    /*
-    //Bakover
-    else if (x < -200){
-
-    }
     
-  */else
-{
-    __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, 0);
-    __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_3, 0);
-}
-    
-  }
   /* USER CODE END 3 */
 }
 
