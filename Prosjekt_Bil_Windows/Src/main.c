@@ -170,6 +170,14 @@ int main(void)
 
         __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, 0);
         __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_2, 0);
+
+
+        if( x > 200){
+          
+          current_motor_state = MOTOR_STATE_FORWARD; // Change to forward state
+        } else if (x < -200){
+          current_motor_state = MOTOR_STATE_BACKWARD; // Change to backward state
+        }
         break;
 
       case MOTOR_STATE_FORWARD:
@@ -211,6 +219,12 @@ int main(void)
           __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_2, base_speed ); // Venstre hjul
         } 
 
+        if (x <= 200 && x >= -200){
+          current_motor_state = MOTOR_STATE_STOP; // Change to stop state
+        } else if (x < -200){
+          current_motor_state = MOTOR_STATE_BACKWARD; // Change to backward state
+        }
+
       break;
 
 
@@ -222,6 +236,13 @@ int main(void)
 
         __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, base_speed ); // Høyre hjul
         __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_2, base_speed ); // Venstre hjul
+
+
+        if( x <= 200 && x >= -200){
+          current_motor_state = MOTOR_STATE_STOP; // Change to stop state
+        } else if (x > 200){
+          current_motor_state = MOTOR_STATE_FORWARD; // Change to forward state
+        }
       break;
 
 
