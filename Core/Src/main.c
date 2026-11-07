@@ -181,6 +181,14 @@ int main(void)
         __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_2, 0);
         break;
 
+        if( x > 200){
+             
+             current_motor_state = MOTOR_STATE_FORWARD; // Change to forward state
+           } else if (x < -200){
+             current_motor_state = MOTOR_STATE_BACKWARD; // Change to backward state
+           }
+           break;
+
       case MOTOR_STATE_FORWARD:
 
         //Fremover med svinging til høyre
