@@ -26,17 +26,22 @@
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
-  typedef enum {
+
+typedef enum {
  MOTOR_STATE_STOP = 0, // Explicitly set to 0
  MOTOR_STATE_FORWARD,       // Defaults to 1
  MOTOR_STATE_BACKWARD       // Defaults to 2
   } MotorState_t;
+
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+
   #define ADC_MAX_VALUE       4095   // 12|-bit ADC has a max value of 4095
   #define PWM_PERIOD_VALUE    19999     // TIM1 ARR is set to 19999
+  #define MAX_DUTY 50000
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -52,22 +57,25 @@ TIM_HandleTypeDef htim1;
 UART_HandleTypeDef huart3;
 
 /* USER CODE BEGIN PV */
+
   uint16_t adc_value_yakse = 0;
   uint16_t adc_value_xakse = 0;
   int32_t x = 0;
   int32_t y = 0;
   int32_t turn = 0;
-  uint32_t base_speed = 10000; // Base speed for the motors, can be adjusted as needed
+  uint32_t base_speed = 25000; // Base speed for the motors, can be adjusted as needed
 
   MotorState_t current_motor_state = MOTOR_STATE_STOP; // Initial state
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
+static void MX_USART3_UART_Init(void);
 static void MX_ADC3_Init(void);
 static void MX_TIM1_Init(void);
-static void MX_USART3_UART_Init(void);
+static void Set_Motor(GPIO_TypeDef *port, uint16_t pin_fram, uint16_t pin_tilbake, uint32_t pwm_channel, int32_t verdi);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -106,21 +114,23 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_USART3_UART_Init();
   MX_ADC3_Init();
   MX_TIM1_Init();
-  MX_USART3_UART_Init();
   /* USER CODE BEGIN 2 */
+
   HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1); //Output til høyre
   HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_2); //Output til venstre
 
- 
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-    /* 
+
+
+   /* 
       Tanken her er at potensiometer Joy-sticken gir to ulike ADC verdier, en for X-aksen og en for Y-aksen. Disse verdiene kan brukes til å styre PWM signalene som går til motorene.
       Potensiometeret vil gi en verdi mellom 0 og 4095 (Hvis det er en 12 bit ADC):
       Verdier over 2048 (I x-aksen) vil derfor gi en fremover bevegelse, og under vil gi en bakoverbevegelse.
@@ -135,7 +145,9 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-     HAL_ADC_Start(&hadc3); 
+
+
+    HAL_ADC_Start(&hadc3); 
     
     HAL_ADC_PollForConversion(&hadc3, HAL_MAX_DELAY);
     adc_value_yakse = HAL_ADC_GetValue(&hadc3);
@@ -147,13 +159,24 @@ int main(void)
     //Setter Midt på joysticken som midtepunkt for PWM signalene
     x = adc_value_xakse - 2048;
     y = adc_value_yakse - 2048;
-    
-
 
     turn = adc_value_yakse - 2048;
 
+    int32_t fram = x;
+    int32_t sving = y;
 
-    switch(current_motor_state){
+    //Dead zone
+    if (fram > -200 && fram < 200) fram = 0;
+    if (sving > -200 && sving < 200) sving = 0;
+
+    int32_t venstre = fram + sving;
+    int32_t hoyre = fram - sving;
+
+    Set_Motor(GPIOF, GPIO_PIN_13, GPIO_PIN_12, TIM_CHANNEL_1, venstre);
+    Set_Motor(GPIOF, GPIO_PIN_14, GPIO_PIN_15, TIM_CHANNEL_2, hoyre);
+   
+
+    /*switch(current_motor_state){
 
       //PF13 => venstre retning 1
       //PF12 => venstre retning 2
@@ -163,6 +186,15 @@ int main(void)
       //Retning 1 => fremover, Retning 2 => bakover
 
       case MOTOR_STATE_STOP:
+        
+       if( x > 200){
+             
+             current_motor_state = MOTOR_STATE_FORWARD; // Change to forward state
+           } else if (x < -200){
+             current_motor_state = MOTOR_STATE_BACKWARD; // Change to backward state
+           }
+           break;
+       
         HAL_GPIO_WritePin(GPIOF, GPIO_PIN_13, GPIO_PIN_RESET);
         HAL_GPIO_WritePin(GPIOF, GPIO_PIN_12, GPIO_PIN_RESET);
         HAL_GPIO_WritePin(GPIOF, GPIO_PIN_14, GPIO_PIN_RESET);
@@ -170,15 +202,9 @@ int main(void)
 
         __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, 0);
         __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_2, 0);
-
-
-        if( x > 200){
-          
-          current_motor_state = MOTOR_STATE_FORWARD; // Change to forward state
-        } else if (x < -200){
-          current_motor_state = MOTOR_STATE_BACKWARD; // Change to backward state
-        }
         break;
+
+        
 
       case MOTOR_STATE_FORWARD:
 
@@ -191,8 +217,8 @@ int main(void)
           HAL_GPIO_WritePin(GPIOF, GPIO_PIN_15, GPIO_PIN_RESET);
 
 
-          __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, base_speed + turn); // Høyre hjul
-          __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_2, base_speed - turn); // Venstre hjul
+          __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, base_speed + turn); // Venstre hjul
+          __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_2, base_speed - turn); // Høyre hjul
 
 
         } 
@@ -204,8 +230,8 @@ int main(void)
           HAL_GPIO_WritePin(GPIOF, GPIO_PIN_14, GPIO_PIN_SET);
           HAL_GPIO_WritePin(GPIOF, GPIO_PIN_15, GPIO_PIN_RESET);
 
-          __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, base_speed - turn); // Høyre hjul
-          __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_2, base_speed + turn); // Venstre hjul
+          __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, base_speed - turn); // Venstre hjul
+          __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_2, base_speed + turn); // Høyre hjul
         }
 
         //Fremover uten svinging
@@ -215,63 +241,38 @@ int main(void)
           HAL_GPIO_WritePin(GPIOF, GPIO_PIN_14, GPIO_PIN_SET);
           HAL_GPIO_WritePin(GPIOF, GPIO_PIN_15, GPIO_PIN_RESET);
 
-          __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, base_speed ); // Høyre hjul
-          __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_2, base_speed ); // Venstre hjul
-        } 
-
-        if (x <= 200 && x >= -200){
-          current_motor_state = MOTOR_STATE_STOP; // Change to stop state
-        } else if (x < -200){
-          current_motor_state = MOTOR_STATE_BACKWARD; // Change to backward state
+          __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, base_speed ); // Venstre hjul
+          __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_2, base_speed ); // Høyre hjul
         }
+
+       else if (x < 200 && y < 200 && x > -200 && y > -200){
+        current_motor_state = MOTOR_STATE_STOP;
+        break;
+       }
 
       break;
 
 
       case MOTOR_STATE_BACKWARD:
+
+        if (x < 200 && y < 200 && x > -200 && y > -200){
+         current_motor_state = MOTOR_STATE_STOP;
+         break;
+        }
+         
         HAL_GPIO_WritePin(GPIOF, GPIO_PIN_13, GPIO_PIN_RESET);
         HAL_GPIO_WritePin(GPIOF, GPIO_PIN_12, GPIO_PIN_SET);
         HAL_GPIO_WritePin(GPIOF, GPIO_PIN_14, GPIO_PIN_RESET);
         HAL_GPIO_WritePin(GPIOF, GPIO_PIN_15, GPIO_PIN_SET);
 
-        __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, base_speed ); // Høyre hjul
-        __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_2, base_speed ); // Venstre hjul
-
-
-        if( x <= 200 && x >= -200){
-          current_motor_state = MOTOR_STATE_STOP; // Change to stop state
-        } else if (x > 200){
-          current_motor_state = MOTOR_STATE_FORWARD; // Change to forward state
-        }
+        __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, base_speed ); // Venstre hjul
+        __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_2, base_speed ); // Høyre hjul
       break;
 
 
-    }
-
-
-
-
-
-
-
-   
-
-
-  
-    
-    /*
-    //Bakover
-    else if (x < -200){
-
-    }
-    
-  */
-
-
-
-
-
+    }*/
   }
+    
   /* USER CODE END 3 */
 }
 
@@ -411,9 +412,9 @@ static void MX_TIM1_Init(void)
 
   /* USER CODE END TIM1_Init 1 */
   htim1.Instance = TIM1;
-  htim1.Init.Prescaler = 107;
+  htim1.Init.Prescaler = 0;
   htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim1.Init.Period = 19999;
+  htim1.Init.Period = 65535;
   htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim1.Init.RepetitionCounter = 0;
   htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
@@ -543,7 +544,7 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pin : PB9 */
   GPIO_InitStruct.Pin = GPIO_PIN_9;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /* USER CODE BEGIN MX_GPIO_Init_2 */
@@ -552,6 +553,25 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+
+static void Set_Motor(GPIO_TypeDef *port, uint16_t pin_fram, uint16_t pin_tilbake, uint32_t pwm_channel, int32_t verdi){
+ 
+ if (verdi > 0){
+  HAL_GPIO_WritePin(port, pin_fram, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(port, pin_tilbake, GPIO_PIN_RESET);
+ } else if (verdi < 0){
+  HAL_GPIO_WritePin(port, pin_fram, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(port, pin_tilbake, GPIO_PIN_SET);
+  verdi = -verdi;
+ } else {
+  HAL_GPIO_WritePin(port, pin_fram, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(port, pin_tilbake, GPIO_PIN_RESET);
+ }
+
+ uint32_t duty = (uint32_t)verdi * MAX_DUTY / 2048;
+ if (duty > MAX_DUTY) duty = MAX_DUTY;
+ __HAL_TIM_SET_COMPARE(&htim1, pwm_channel, duty);
+}
 
 /* USER CODE END 4 */
 
