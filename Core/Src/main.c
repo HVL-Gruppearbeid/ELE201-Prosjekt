@@ -75,6 +75,7 @@ static void MX_GPIO_Init(void);
 static void MX_USART3_UART_Init(void);
 static void MX_ADC3_Init(void);
 static void MX_TIM1_Init(void);
+static void Set_Motor(GPIO_TypeDef *port, uint16_t pin_fram, uint16_t pin_tilbake, uint32_t pwm_channel, int32_t verdi);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -270,7 +271,7 @@ int main(void)
 
 
     }*/
-  
+  }
     
   /* USER CODE END 3 */
 }
@@ -561,7 +562,7 @@ static void Set_Motor(GPIO_TypeDef *port, uint16_t pin_fram, uint16_t pin_tilbak
  } else if (verdi < 0){
   HAL_GPIO_WritePin(port, pin_fram, GPIO_PIN_RESET);
   HAL_GPIO_WritePin(port, pin_tilbake, GPIO_PIN_SET);
-  value = -value;
+  verdi = -verdi;
  } else {
   HAL_GPIO_WritePin(port, pin_fram, GPIO_PIN_RESET);
   HAL_GPIO_WritePin(port, pin_tilbake, GPIO_PIN_RESET);
