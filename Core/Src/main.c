@@ -76,6 +76,7 @@ static void MX_USART3_UART_Init(void);
 static void MX_ADC3_Init(void);
 static void MX_TIM1_Init(void);
 static void Set_Motor(GPIO_TypeDef *port, uint16_t pin_fram, uint16_t pin_tilbake, uint32_t pwm_channel, int32_t verdi);
+
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -174,104 +175,6 @@ int main(void)
 
     Set_Motor(GPIOF, GPIO_PIN_13, GPIO_PIN_12, TIM_CHANNEL_1, venstre);
     Set_Motor(GPIOF, GPIO_PIN_14, GPIO_PIN_15, TIM_CHANNEL_2, hoyre);
-   
-
-    /*switch(current_motor_state){
-
-      //PF13 => venstre retning 1
-      //PF12 => venstre retning 2
-      //PF14 => høyre retning 1
-      //PF15 => høyre retning 2
-
-      //Retning 1 => fremover, Retning 2 => bakover
-
-      case MOTOR_STATE_STOP:
-        
-       if( x > 200){
-             
-             current_motor_state = MOTOR_STATE_FORWARD; // Change to forward state
-           } else if (x < -200){
-             current_motor_state = MOTOR_STATE_BACKWARD; // Change to backward state
-           }
-           break;
-       
-        HAL_GPIO_WritePin(GPIOF, GPIO_PIN_13, GPIO_PIN_RESET);
-        HAL_GPIO_WritePin(GPIOF, GPIO_PIN_12, GPIO_PIN_RESET);
-        HAL_GPIO_WritePin(GPIOF, GPIO_PIN_14, GPIO_PIN_RESET);
-        HAL_GPIO_WritePin(GPIOF, GPIO_PIN_15, GPIO_PIN_RESET);
-
-        __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, 0);
-        __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_2, 0);
-        break;
-
-        
-
-      case MOTOR_STATE_FORWARD:
-
-        //Fremover med svinging til høyre
-        if( x > 200 && y > 200){
-
-          HAL_GPIO_WritePin(GPIOF, GPIO_PIN_13, GPIO_PIN_SET);
-          HAL_GPIO_WritePin(GPIOF, GPIO_PIN_12, GPIO_PIN_RESET);
-          HAL_GPIO_WritePin(GPIOF, GPIO_PIN_14, GPIO_PIN_SET);
-          HAL_GPIO_WritePin(GPIOF, GPIO_PIN_15, GPIO_PIN_RESET);
-
-
-          __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, base_speed + turn); // Venstre hjul
-          __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_2, base_speed - turn); // Høyre hjul
-
-
-        } 
-
-        //fremover med svinging til venstre
-        else if (x > 200 && y < -200){
-          HAL_GPIO_WritePin(GPIOF, GPIO_PIN_13, GPIO_PIN_SET);
-          HAL_GPIO_WritePin(GPIOF, GPIO_PIN_12, GPIO_PIN_RESET);
-          HAL_GPIO_WritePin(GPIOF, GPIO_PIN_14, GPIO_PIN_SET);
-          HAL_GPIO_WritePin(GPIOF, GPIO_PIN_15, GPIO_PIN_RESET);
-
-          __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, base_speed - turn); // Venstre hjul
-          __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_2, base_speed + turn); // Høyre hjul
-        }
-
-        //Fremover uten svinging
-        else if (x > 200 && y <= 200 && y >= -200){
-          HAL_GPIO_WritePin(GPIOF, GPIO_PIN_13, GPIO_PIN_SET);
-          HAL_GPIO_WritePin(GPIOF, GPIO_PIN_12, GPIO_PIN_RESET);
-          HAL_GPIO_WritePin(GPIOF, GPIO_PIN_14, GPIO_PIN_SET);
-          HAL_GPIO_WritePin(GPIOF, GPIO_PIN_15, GPIO_PIN_RESET);
-
-          __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, base_speed ); // Venstre hjul
-          __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_2, base_speed ); // Høyre hjul
-        }
-
-       else if (x < 200 && y < 200 && x > -200 && y > -200){
-        current_motor_state = MOTOR_STATE_STOP;
-        break;
-       }
-
-      break;
-
-
-      case MOTOR_STATE_BACKWARD:
-
-        if (x < 200 && y < 200 && x > -200 && y > -200){
-         current_motor_state = MOTOR_STATE_STOP;
-         break;
-        }
-         
-        HAL_GPIO_WritePin(GPIOF, GPIO_PIN_13, GPIO_PIN_RESET);
-        HAL_GPIO_WritePin(GPIOF, GPIO_PIN_12, GPIO_PIN_SET);
-        HAL_GPIO_WritePin(GPIOF, GPIO_PIN_14, GPIO_PIN_RESET);
-        HAL_GPIO_WritePin(GPIOF, GPIO_PIN_15, GPIO_PIN_SET);
-
-        __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, base_speed ); // Venstre hjul
-        __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_2, base_speed ); // Høyre hjul
-      break;
-
-
-    }*/
-  }
     
   /* USER CODE END 3 */
 }
