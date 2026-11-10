@@ -27,19 +27,11 @@
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
 
-typedef enum {
- MOTOR_STATE_STOP = 0, // Explicitly set to 0
- MOTOR_STATE_FORWARD,       // Defaults to 1
- MOTOR_STATE_BACKWARD       // Defaults to 2
-  } MotorState_t;
-
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 
-  #define ADC_MAX_VALUE       4095   // 12|-bit ADC has a max value of 4095
-  #define PWM_PERIOD_VALUE    19999     // TIM1 ARR is set to 19999
   #define MAX_DUTY 50000
 
 /* USER CODE END PD */
@@ -64,8 +56,6 @@ UART_HandleTypeDef huart3;
   int32_t y = 0;
   int32_t turn = 0;
   uint32_t base_speed = 25000; // Base speed for the motors, can be adjusted as needed
-
-  MotorState_t current_motor_state = MOTOR_STATE_STOP; // Initial state
 
 /* USER CODE END PV */
 
@@ -130,19 +120,6 @@ int main(void)
   while (1)
   {
 
-
-   /* 
-      Tanken her er at potensiometer Joy-sticken gir to ulike ADC verdier, en for X-aksen og en for Y-aksen. Disse verdiene kan brukes til å styre PWM signalene som går til motorene.
-      Potensiometeret vil gi en verdi mellom 0 og 4095 (Hvis det er en 12 bit ADC):
-      Verdier over 2048 (I x-aksen) vil derfor gi en fremover bevegelse, og under vil gi en bakoverbevegelse.
-      For å få en smooth overgang mellom fremover og bakover, kan man bruke en "deadzone" rundt midtpunktet (2048). Dette betyr at hvis verdien er mellom 1900 og 2200, vil motorene ikke bevege seg
-      For å regne ut svinging ser man på y-akse ADC verdien. Hvis denne er over 2048, vil roboten svinge til høyre, og under 2048 vil den svinge til venstre. Igjen kan man bruke en deadzone for å unngå små bevegelser.
-
-      Dette vil regnes ut med å ha en relativ hastighet basert på y-aksen på hvert hjul. 
-      For simplisitetens skyld, har man en konstant hastighet ved fremover/bakover, og så justerer man hastigheten på hvert hjul basert på y-aksen. Dette kan gjøres med en enkel formel:
-      left_motor_speed = base_speed + (y_value - 2048) / 2048
-    
-    */
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -177,6 +154,7 @@ int main(void)
     Set_Motor(GPIOF, GPIO_PIN_14, GPIO_PIN_15, TIM_CHANNEL_2, hoyre);
     
   /* USER CODE END 3 */
+  }
 }
 
 /**
